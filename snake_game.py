@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List
-from streamlit.components.v1 import html
+import streamlit.components.v1 as components
 
 # Configure Streamlit
 st.set_page_config(
@@ -151,8 +151,6 @@ class StreamlitScoreboard:
             pass
         return 0
 
-# Removed text-based grid display - keeping only HTML display
-
 # HTML Canvas-based game visualization with keyboard controls
 def create_html_game_display(snake, food, score, high_score, game_over):
     """Create an HTML canvas representation of the game with keyboard controls"""
@@ -161,45 +159,92 @@ def create_html_game_display(snake, food, score, high_score, game_over):
     canvas_height = 400
     scale = canvas_width / 800  # Scale down from 800x800 to 400x400
     
-    # JavaScript for keyboard controls
-    keyboard_script = """
-    <script>
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(key)) {
-                event.preventDefault();
-                
-                // Send key press to Streamlit
-                if (key === 'ArrowUp' || key === 'w' || key === 'W') {
-                    window.parent.postMessage({type: 'keypress', key: 'up'}, '*');
-                } else if (key === 'ArrowDown' || key === 's' || key === 'S') {
-                    window.parent.postMessage({type: 'keypress', key: 'down'}, '*');
-                } else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
-                    window.parent.postMessage({type: 'keypress', key: 'left'}, '*');
-                } else if (key === 'ArrowRight' || key === 'd' || key === 'D') {
-                    window.parent.postMessage({type: 'keypress', key: 'right'}, '*');
-                }
-            }
-        });
-        
-        // Make sure the game area is focusable
-        document.getElementById('game-area').focus();
-    </script>
-    """
-    
     html_content = f"""
-    <div id="game-area" tabindex="0" style="display: flex; flex-direction: column; align-items: center; background-color: #1e1e1e; padding: 20px; border-radius: 10px; outline: none;">
-        <h2 style="color: {'red' if game_over else 'white'}; margin: 10px;">
-            {'🎮 GAME OVER' if game_over else '🐍 SNAKE GAME'}
-        </h2>
-        <div style="color: white; margin: 10px;">
-            Score: {score} | High Score: <span style="color: gold;">{high_score}</span>
-        </div>
-        <div style="color: #ccc; margin: 5px; font-size: 12px;">
-            Use ↑↓←→ arrow keys or WASD to control the snake
-        </div>
-        <div style="position: relative; width: {canvas_width}px; height: {canvas_height}px; background-color: black; border: 3px solid lime; border-radius: 5px;">
-            <!-- Snake segments -->
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                margin: 0;
+                padding: 20px;
+                background-color: #1e1e1e;
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }}
+            .game-container {{
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                background-color: #2d2d2d;
+                padding: 20px;
+                border-radius: 10px;
+                border: 2px solid #444;
+            }}
+            .game-title {{
+                color: {'red' if game_over else 'lime'};
+                margin: 10px;
+                font-size: 24px;
+                font-weight: bold;
+            }}
+            .score-display {{
+                color: white;
+                margin: 10px;
+                font-size: 18px;
+            }}
+            .high-score {{
+                color: gold;
+            }}
+            .instructions {{
+                color: #ccc;
+                margin: 5px;
+                font-size: 12px;
+            }}
+            .game-board {{
+                position: relative;
+                width: {canvas_width}px;
+                height: {canvas_height}px;
+                background-color: black;
+                border: 3px solid lime;
+                border-radius: 5px;
+                margin: 10px;
+            }}
+            .snake-segment {{
+                position: absolute;
+                border-radius: 50%;
+            }}
+            .snake-head {{
+                background-color: lime;
+                border: 1px solid darkgreen;
+            }}
+            .snake-body {{
+                background-color: lightgreen;
+                border: 1px solid darkgreen;
+            }}
+            .food {{
+                position: absolute;
+                width: 16px;
+                height: 16px;
+                background-color: red;
+                border-radius: 50%;
+                border: 1px solid darkred;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="game-container">
+            <div class="game-title">
+                {'🎮 GAME OVER' if game_over else '🐍 SNAKE GAME'}
+            </div>
+            <div class="score-display">
+                Score: {score} | High Score: <span class="high-score">{high_score}</span>
+            </div>
+            <div class="instructions">
+                Use ↑↓←→ arrow keys or WASD to control the snake
+            </div>
+            <div class="game-board" id="game-board" tabindex="0">
     """
     
     # Add snake segments
@@ -207,13 +252,12 @@ def create_html_game_display(snake, food, score, high_score, game_over):
         x = (segment.x + 400) * scale
         y = (400 - segment.y) * scale  # Flip Y coordinate
         
-        color = "lime" if i == 0 else "lightgreen"
-        size = 18 if i == 0 else 16
+        is_head = i == 0
+        size = 18 if is_head else 16
+        css_class = "snake-head" if is_head else "snake-body"
         
         html_content += f"""
-            <div style="position: absolute; left: {x-size//2}px; top: {y-size//2}px; 
-                        width: {size}px; height: {size}px; background-color: {color}; 
-                        border-radius: 50%; border: 1px solid darkgreen;"></div>
+                <div class="snake-segment {css_class}" style="left: {x-size//2}px; top: {y-size//2}px; width: {size}px; height: {size}px;"></div>
         """
     
     # Add food
@@ -221,13 +265,53 @@ def create_html_game_display(snake, food, score, high_score, game_over):
     fy = (400 - food.position.y) * scale
     
     html_content += f"""
-            <!-- Food -->
-            <div style="position: absolute; left: {fx-8}px; top: {fy-8}px; 
-                        width: 16px; height: 16px; background-color: red; 
-                        border-radius: 50%; border: 1px solid darkred;"></div>
+                <div class="food" style="left: {fx-8}px; top: {fy-8}px;"></div>
+            </div>
         </div>
-    </div>
-    {keyboard_script}
+        
+        <script>
+            // Focus on the game board for keyboard input
+            document.getElementById('game-board').focus();
+            
+            // Handle keyboard input
+            document.addEventListener('keydown', function(event) {{
+                const key = event.key;
+                let direction = '';
+                
+                // Prevent default behavior for game keys
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(key)) {{
+                    event.preventDefault();
+                    
+                    if (key === 'ArrowUp' || key === 'w' || key === 'W') {{
+                        direction = 'up';
+                    }} else if (key === 'ArrowDown' || key === 's' || key === 'S') {{
+                        direction = 'down';
+                    }} else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {{
+                        direction = 'left';
+                    }} else if (key === 'ArrowRight' || key === 'd' || key === 'D') {{
+                        direction = 'right';
+                    }}
+                    
+                    if (direction) {{
+                        // Send message to parent (Streamlit)
+                        window.parent.postMessage({{
+                            type: 'keypress',
+                            key: direction,
+                            timestamp: Date.now()
+                        }}, '*');
+                    }}
+                }}
+            }});
+            
+            // Handle messages from parent
+            window.addEventListener('message', function(event) {{
+                if (event.data.type === 'focus') {{
+                    document.getElementById('game-board').focus();
+                }}
+            }});
+        </script>
+    </body>
+    </html>
     """
     
     return html_content
@@ -241,6 +325,7 @@ def init_game():
     st.session_state.last_update = time.time()
     st.session_state.speed = 0.3
     st.session_state.last_key_press = None
+    st.session_state.last_key_time = 0
 
 if 'snake' not in st.session_state:
     init_game()
@@ -277,7 +362,7 @@ def check_collisions():
 
 def main():
     st.title("🐍 Snake Game")
-    st.markdown("*Recreated from your Python files with high score tracking!*")
+    st.markdown("*Enhanced Streamlit Snake Game with Keyboard Controls!*")
     
     # Sidebar with game stats and controls
     with st.sidebar:
@@ -310,45 +395,30 @@ def main():
         st.header("📖 Instructions")
         st.markdown("""
         **How to Play:**
-        - Use the arrow buttons to control the snake
+        - Use arrow keys or WASD to control the snake
         - Eat red food to grow and score points
         - Avoid walls and your own tail
         - Try to beat your high score!
         
         **Controls:**
-        - ⬆️⬇️⬅️➡️ Arrow keys or WASD to move snake
-        - Click arrow buttons as backup
-        - Adjust speed with slider
+        - ⬆️⬇️⬅️➡️ Arrow keys or WASD
+        - Click on game area first to focus
+        - Use backup buttons below if needed
         """)
     
     # Main game area
     col1, col2, col3 = st.columns([1, 3, 1])
     
     with col2:
-        # Keyboard input detection using query params
-        query_params = st.experimental_get_query_params()
-        if 'key' in query_params:
-            key = query_params['key'][0]
-            if key != st.session_state.get('last_key_press'):
-                if key == 'up':
-                    st.session_state.snake.up()
-                elif key == 'down':
-                    st.session_state.snake.down()
-                elif key == 'left':
-                    st.session_state.snake.left()
-                elif key == 'right':
-                    st.session_state.snake.right()
-                st.session_state.last_key_press = key
-        
         # Control buttons (backup method)
-        st.markdown("### 🎮 Game Controls")
-        control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns(5)
+        st.markdown("### 🎮 Manual Controls")
+        control_col1, control_col2, control_col3, control_col4 = st.columns(4)
         
-        with control_col2:
+        with control_col1:
             if st.button("⬆️", key="up", help="Move Up", use_container_width=True):
                 st.session_state.snake.up()
         
-        with control_col1:
+        with control_col2:
             if st.button("⬅️", key="left", help="Move Left", use_container_width=True):
                 st.session_state.snake.left()
         
@@ -360,102 +430,80 @@ def main():
             if st.button("➡️", key="right", help="Move Right", use_container_width=True):
                 st.session_state.snake.right()
         
-        # Game display with keyboard controls
+        # Game display area
         st.markdown("### 🎯 Game Area")
-        st.markdown("*Click on the game area and use arrow keys or WASD to control the snake*")
         
-        # Add keyboard event listener
-        keyboard_html = """
-        <script>
-        let lastKey = '';
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-            let direction = '';
+        # Handle keyboard input through query parameters
+        query_params = st.experimental_get_query_params()
+        if 'key' in query_params and 'timestamp' in query_params:
+            key = query_params['key'][0]
+            timestamp = int(query_params['timestamp'][0])
             
-            if (key === 'ArrowUp' || key === 'w' || key === 'W') {
-                direction = 'up';
-                event.preventDefault();
-            } else if (key === 'ArrowDown' || key === 's' || key === 'S') {
-                direction = 'down';
-                event.preventDefault();
-            } else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
-                direction = 'left';
-                event.preventDefault();
-            } else if (key === 'ArrowRight' || key === 'd' || key === 'D') {
-                direction = 'right';
-                event.preventDefault();
-            }
-            
-            if (direction && direction !== lastKey) {
-                lastKey = direction;
-                // Use Streamlit's query params to communicate key press
-                const url = new URL(window.location);
-                url.searchParams.set('key', direction);
-                url.searchParams.set('timestamp', Date.now());
-                window.history.replaceState({}, '', url);
-                window.location.reload();
-            }
-        });
-        </script>
-        <div style="padding: 10px; text-align: center; background: #f0f0f0; border-radius: 5px; margin: 10px 0;">
-            Press arrow keys or WASD to control the snake
-        </div>
-        """
+            # Only process if this is a new key press
+            if timestamp > st.session_state.last_key_time:
+                if key == 'up':
+                    st.session_state.snake.up()
+                elif key == 'down':
+                    st.session_state.snake.down()
+                elif key == 'left':
+                    st.session_state.snake.left()
+                elif key == 'right':
+                    st.session_state.snake.right()
+                
+                st.session_state.last_key_time = timestamp
+                
+                # Clear the query params
+                st.experimental_set_query_params()
         
-        html(keyboard_html, height=100)
-        game_container = st.container()
+        # Game logic update
+        if st.session_state.game_running:
+            current_time = time.time()
+            if current_time - st.session_state.last_update > st.session_state.speed:
+                st.session_state.snake.move()
+                collision = check_collisions()
+                st.session_state.last_update = current_time
+                
+                if collision == "food":
+                    st.balloons()
         
-        with game_container:
-            # Game logic update
-            if st.session_state.game_running:
-                current_time = time.time()
-                if current_time - st.session_state.last_update > st.session_state.speed:
-                    st.session_state.snake.move()
-                    collision = check_collisions()
-                    st.session_state.last_update = current_time
-                    
-                    if collision == "food":
-                        st.balloons()
+        # Create and display game using HTML components
+        html_display = create_html_game_display(
+            st.session_state.snake, 
+            st.session_state.food,
+            st.session_state.scoreboard.score,
+            st.session_state.scoreboard.high_score,
+            st.session_state.scoreboard.game_over_flag
+        )
+        
+        # Use components.html instead of st.markdown
+        components.html(html_display, height=600, scrolling=False)
+        
+        # Game status and auto-refresh
+        if st.session_state.game_running:
+            st.success("🎮 Game Running - Use keyboard to control!")
+            # Auto-refresh for continuous gameplay
+            time.sleep(0.1)
+            st.rerun()
+        else:
+            st.error("💀 Game Over!")
             
-            # Create and display game using HTML
-            html_display = create_html_game_display(
-                st.session_state.snake, 
-                st.session_state.food,
-                st.session_state.scoreboard.score,
-                st.session_state.scoreboard.high_score,
-                st.session_state.scoreboard.game_over_flag
-            )
-            st.markdown(html_display, unsafe_allow_html=True)
+            # Show final stats
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            with col_stats1:
+                st.metric("Final Score", st.session_state.scoreboard.score)
+            with col_stats2:
+                st.metric("High Score", st.session_state.scoreboard.high_score)
+            with col_stats3:
+                if st.session_state.scoreboard.score == st.session_state.scoreboard.high_score and st.session_state.scoreboard.score > 0:
+                    st.success("🏆 NEW HIGH SCORE!")
+                else:
+                    st.info("Try again!")
             
-            # Game status
-            if st.session_state.game_running:
-                st.success("🎮 Game Running - Use arrow buttons to control!")
-                # Auto-refresh for continuous gameplay
-                time.sleep(0.1)
+            if st.button("🎯 Play Again", type="primary", key="play_again"):
+                init_game()
                 st.rerun()
-            else:
-                st.error("💀 Game Over!")
-                
-                # Show final stats
-                col_stats1, col_stats2, col_stats3 = st.columns(3)
-                with col_stats1:
-                    st.metric("Final Score", st.session_state.scoreboard.score)
-                with col_stats2:
-                    st.metric("High Score", st.session_state.scoreboard.high_score)
-                with col_stats3:
-                    if st.session_state.scoreboard.score == st.session_state.scoreboard.high_score and st.session_state.scoreboard.score > 0:
-                        st.success("🏆 NEW HIGH SCORE!")
-                    else:
-                        st.info("Try again!")
-                
-                if st.button("🎯 Play Again", type="primary", key="play_again"):
-                    init_game()
-                    st.rerun()
-
-    # Game info
-    st.markdown("---")
     
-    # Display current game state
+    # Display current game state (debug info)
     with st.expander("🔍 Game Debug Info"):
         st.write(f"Snake Head Position: ({st.session_state.snake.head.x}, {st.session_state.snake.head.y})")
         st.write(f"Snake Direction: {st.session_state.snake.direction}")
@@ -463,7 +511,7 @@ def main():
         st.write(f"Snake Length: {len(st.session_state.snake.segments)}")
         st.write(f"Game Running: {st.session_state.game_running}")
     
-    st.info("💡 **Tip:** Use keyboard arrow keys (↑↓←→) or WASD keys to control your snake! The buttons below are backup controls.")
+    st.info("💡 **Tip:** Click on the game area first, then use keyboard arrow keys (↑↓←→) or WASD keys to control your snake!")
 
 if __name__ == "__main__":
     main()
