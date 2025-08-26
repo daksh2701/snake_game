@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List
+from streamlit.components.v1 import html
 
 # Configure Streamlit
 st.set_page_config(
@@ -150,51 +151,52 @@ class StreamlitScoreboard:
             pass
         return 0
 
-# Text-based game visualization
-def create_game_display(snake, food, score, high_score, game_over):
-    """Create a text-based representation of the game"""
-    # Create a grid (40x40 characters to represent the game area)
-    grid_size = 40
-    grid = [["⬛" for _ in range(grid_size)] for _ in range(grid_size)]
-    
-    # Convert coordinates to grid positions
-    def coord_to_grid(x, y):
-        grid_x = int((x + 400) / 20)  # Convert from -400,400 to 0,40
-        grid_y = int((y + 400) / 20)
-        return max(0, min(grid_size - 1, grid_x)), max(0, min(grid_size - 1, grid_y))
-    
-    # Place snake on grid
-    for i, segment in enumerate(snake.segments):
-        gx, gy = coord_to_grid(segment.x, segment.y)
-        if i == 0:
-            grid[gy][gx] = "🟢"  # Head
-        else:
-            grid[gy][gx] = "🟩"  # Body
-    
-    # Place food on grid
-    fx, fy = coord_to_grid(food.position.x, food.position.y)
-    grid[fy][fx] = "🔴"  # Food
-    
-    # Convert grid to string
-    display_text = "\n".join(["".join(row) for row in grid])
-    
-    return display_text
+# Removed text-based grid display - keeping only HTML display
 
-# HTML Canvas-based game visualization (alternative approach)
+# HTML Canvas-based game visualization with keyboard controls
 def create_html_game_display(snake, food, score, high_score, game_over):
-    """Create an HTML canvas representation of the game"""
+    """Create an HTML canvas representation of the game with keyboard controls"""
     
     canvas_width = 400
     canvas_height = 400
     scale = canvas_width / 800  # Scale down from 800x800 to 400x400
     
+    # JavaScript for keyboard controls
+    keyboard_script = """
+    <script>
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(key)) {
+                event.preventDefault();
+                
+                // Send key press to Streamlit
+                if (key === 'ArrowUp' || key === 'w' || key === 'W') {
+                    window.parent.postMessage({type: 'keypress', key: 'up'}, '*');
+                } else if (key === 'ArrowDown' || key === 's' || key === 'S') {
+                    window.parent.postMessage({type: 'keypress', key: 'down'}, '*');
+                } else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+                    window.parent.postMessage({type: 'keypress', key: 'left'}, '*');
+                } else if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+                    window.parent.postMessage({type: 'keypress', key: 'right'}, '*');
+                }
+            }
+        });
+        
+        // Make sure the game area is focusable
+        document.getElementById('game-area').focus();
+    </script>
+    """
+    
     html_content = f"""
-    <div style="display: flex; flex-direction: column; align-items: center; background-color: #1e1e1e; padding: 20px; border-radius: 10px;">
+    <div id="game-area" tabindex="0" style="display: flex; flex-direction: column; align-items: center; background-color: #1e1e1e; padding: 20px; border-radius: 10px; outline: none;">
         <h2 style="color: {'red' if game_over else 'white'}; margin: 10px;">
             {'🎮 GAME OVER' if game_over else '🐍 SNAKE GAME'}
         </h2>
         <div style="color: white; margin: 10px;">
             Score: {score} | High Score: <span style="color: gold;">{high_score}</span>
+        </div>
+        <div style="color: #ccc; margin: 5px; font-size: 12px;">
+            Use ↑↓←→ arrow keys or WASD to control the snake
         </div>
         <div style="position: relative; width: {canvas_width}px; height: {canvas_height}px; background-color: black; border: 3px solid lime; border-radius: 5px;">
             <!-- Snake segments -->
@@ -225,6 +227,7 @@ def create_html_game_display(snake, food, score, high_score, game_over):
                         border-radius: 50%; border: 1px solid darkred;"></div>
         </div>
     </div>
+    {keyboard_script}
     """
     
     return html_content
@@ -237,7 +240,7 @@ def init_game():
     st.session_state.game_running = True
     st.session_state.last_update = time.time()
     st.session_state.speed = 0.3
-    st.session_state.display_mode = "HTML"
+    st.session_state.last_key_press = None
 
 if 'snake' not in st.session_state:
     init_game()
@@ -289,11 +292,6 @@ def main():
         
         st.header("🎛️ Game Controls")
         
-        # Display mode selection
-        display_mode = st.selectbox("Display Mode", ["HTML", "Text Grid"], 
-                                   index=0 if st.session_state.display_mode == "HTML" else 1)
-        st.session_state.display_mode = display_mode
-        
         game_speed = st.slider("Game Speed (seconds)", 0.1, 0.8, st.session_state.speed, 0.1)
         st.session_state.speed = game_speed
         
@@ -318,16 +316,31 @@ def main():
         - Try to beat your high score!
         
         **Controls:**
-        - ⬆️⬇️⬅️➡️ Move snake
+        - ⬆️⬇️⬅️➡️ Arrow keys or WASD to move snake
+        - Click arrow buttons as backup
         - Adjust speed with slider
-        - Switch between HTML and Text display
         """)
     
     # Main game area
     col1, col2, col3 = st.columns([1, 3, 1])
     
     with col2:
-        # Control buttons
+        # Keyboard input detection using query params
+        query_params = st.experimental_get_query_params()
+        if 'key' in query_params:
+            key = query_params['key'][0]
+            if key != st.session_state.get('last_key_press'):
+                if key == 'up':
+                    st.session_state.snake.up()
+                elif key == 'down':
+                    st.session_state.snake.down()
+                elif key == 'left':
+                    st.session_state.snake.left()
+                elif key == 'right':
+                    st.session_state.snake.right()
+                st.session_state.last_key_press = key
+        
+        # Control buttons (backup method)
         st.markdown("### 🎮 Game Controls")
         control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns(5)
         
@@ -347,8 +360,49 @@ def main():
             if st.button("➡️", key="right", help="Move Right", use_container_width=True):
                 st.session_state.snake.right()
         
-        # Game display
+        # Game display with keyboard controls
         st.markdown("### 🎯 Game Area")
+        st.markdown("*Click on the game area and use arrow keys or WASD to control the snake*")
+        
+        # Add keyboard event listener
+        keyboard_html = """
+        <script>
+        let lastKey = '';
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            let direction = '';
+            
+            if (key === 'ArrowUp' || key === 'w' || key === 'W') {
+                direction = 'up';
+                event.preventDefault();
+            } else if (key === 'ArrowDown' || key === 's' || key === 'S') {
+                direction = 'down';
+                event.preventDefault();
+            } else if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+                direction = 'left';
+                event.preventDefault();
+            } else if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+                direction = 'right';
+                event.preventDefault();
+            }
+            
+            if (direction && direction !== lastKey) {
+                lastKey = direction;
+                // Use Streamlit's query params to communicate key press
+                const url = new URL(window.location);
+                url.searchParams.set('key', direction);
+                url.searchParams.set('timestamp', Date.now());
+                window.history.replaceState({}, '', url);
+                window.location.reload();
+            }
+        });
+        </script>
+        <div style="padding: 10px; text-align: center; background: #f0f0f0; border-radius: 5px; margin: 10px 0;">
+            Press arrow keys or WASD to control the snake
+        </div>
+        """
+        
+        html(keyboard_html, height=100)
         game_container = st.container()
         
         with game_container:
@@ -363,25 +417,15 @@ def main():
                     if collision == "food":
                         st.balloons()
             
-            # Create and display game based on selected mode
-            if st.session_state.display_mode == "HTML":
-                html_display = create_html_game_display(
-                    st.session_state.snake, 
-                    st.session_state.food,
-                    st.session_state.scoreboard.score,
-                    st.session_state.scoreboard.high_score,
-                    st.session_state.scoreboard.game_over_flag
-                )
-                st.markdown(html_display, unsafe_allow_html=True)
-            else:
-                text_display = create_game_display(
-                    st.session_state.snake, 
-                    st.session_state.food,
-                    st.session_state.scoreboard.score,
-                    st.session_state.scoreboard.high_score,
-                    st.session_state.scoreboard.game_over_flag
-                )
-                st.code(text_display, language=None)
+            # Create and display game using HTML
+            html_display = create_html_game_display(
+                st.session_state.snake, 
+                st.session_state.food,
+                st.session_state.scoreboard.score,
+                st.session_state.scoreboard.high_score,
+                st.session_state.scoreboard.game_over_flag
+            )
+            st.markdown(html_display, unsafe_allow_html=True)
             
             # Game status
             if st.session_state.game_running:
@@ -419,7 +463,7 @@ def main():
         st.write(f"Snake Length: {len(st.session_state.snake.segments)}")
         st.write(f"Game Running: {st.session_state.game_running}")
     
-    st.info("💡 **Tip:** Use the arrow buttons to control your snake. Choose between HTML or Text Grid display mode in the sidebar!")
+    st.info("💡 **Tip:** Use keyboard arrow keys (↑↓←→) or WASD keys to control your snake! The buttons below are backup controls.")
 
 if __name__ == "__main__":
     main()
