@@ -5,11 +5,7 @@ import json
 import os
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List, Tuple
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.animation import FuncAnimation
-import numpy as np
+from typing import List
 
 # Configure Streamlit
 st.set_page_config(
@@ -154,56 +150,84 @@ class StreamlitScoreboard:
             pass
         return 0
 
-# Game visualization
-def create_game_plot(snake, food, score, high_score, game_over):
-    fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_xlim(-400, 400)
-    ax.set_ylim(-400, 400)
-    ax.set_aspect('equal')
-    ax.set_facecolor('black')
+# Text-based game visualization
+def create_game_display(snake, food, score, high_score, game_over):
+    """Create a text-based representation of the game"""
+    # Create a grid (40x40 characters to represent the game area)
+    grid_size = 40
+    grid = [["⬛" for _ in range(grid_size)] for _ in range(grid_size)]
     
-    # Draw boundary
-    boundary = patches.Rectangle((-380, -380), 760, 760, 
-                                linewidth=3, edgecolor='white', 
-                                facecolor='none')
-    ax.add_patch(boundary)
+    # Convert coordinates to grid positions
+    def coord_to_grid(x, y):
+        grid_x = int((x + 400) / 20)  # Convert from -400,400 to 0,40
+        grid_y = int((y + 400) / 20)
+        return max(0, min(grid_size - 1, grid_x)), max(0, min(grid_size - 1, grid_y))
     
-    # Draw snake
+    # Place snake on grid
     for i, segment in enumerate(snake.segments):
-        color = 'lime' if i == 0 else 'lightgreen'
-        size = 18 if i == 0 else 16
-        circle = patches.Circle((segment.x, segment.y), size/2, 
-                               facecolor=color, edgecolor='darkgreen')
-        ax.add_patch(circle)
-        
-        # Add eyes to head
+        gx, gy = coord_to_grid(segment.x, segment.y)
         if i == 0:
-            eye1_x = segment.x - 5 if snake.direction in ["LEFT", "RIGHT"] else segment.x - 3
-            eye1_y = segment.y + 3 if snake.direction in ["UP", "DOWN"] else segment.y + 5
-            eye2_x = segment.x + 5 if snake.direction in ["LEFT", "RIGHT"] else segment.x + 3
-            eye2_y = segment.y + 3 if snake.direction in ["UP", "DOWN"] else segment.y - 5
-            
-            ax.plot(eye1_x, eye1_y, 'ko', markersize=3)
-            ax.plot(eye2_x, eye2_y, 'ko', markersize=3)
+            grid[gy][gx] = "🟢"  # Head
+        else:
+            grid[gy][gx] = "🟩"  # Body
     
-    # Draw food
-    food_circle = patches.Circle((food.position.x, food.position.y), 10, 
-                                facecolor='red', edgecolor='darkred')
-    ax.add_patch(food_circle)
+    # Place food on grid
+    fx, fy = coord_to_grid(food.position.x, food.position.y)
+    grid[fy][fx] = "🔴"  # Food
     
-    # Add title and score
-    title_color = 'red' if game_over else 'white'
-    title_text = 'GAME OVER' if game_over else 'SNAKE GAME'
-    ax.text(0, 350, title_text, color=title_color, fontsize=24, 
-            fontweight='bold', ha='center')
-    ax.text(0, 320, f'Score: {score}', color='white', fontsize=16, ha='center')
-    ax.text(0, 290, f'High Score: {high_score}', color='gold', fontsize=14, ha='center')
+    # Convert grid to string
+    display_text = "\n".join(["".join(row) for row in grid])
     
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.axis('off')
+    return display_text
+
+# HTML Canvas-based game visualization (alternative approach)
+def create_html_game_display(snake, food, score, high_score, game_over):
+    """Create an HTML canvas representation of the game"""
     
-    return fig
+    canvas_width = 400
+    canvas_height = 400
+    scale = canvas_width / 800  # Scale down from 800x800 to 400x400
+    
+    html_content = f"""
+    <div style="display: flex; flex-direction: column; align-items: center; background-color: #1e1e1e; padding: 20px; border-radius: 10px;">
+        <h2 style="color: {'red' if game_over else 'white'}; margin: 10px;">
+            {'🎮 GAME OVER' if game_over else '🐍 SNAKE GAME'}
+        </h2>
+        <div style="color: white; margin: 10px;">
+            Score: {score} | High Score: <span style="color: gold;">{high_score}</span>
+        </div>
+        <div style="position: relative; width: {canvas_width}px; height: {canvas_height}px; background-color: black; border: 3px solid lime; border-radius: 5px;">
+            <!-- Snake segments -->
+    """
+    
+    # Add snake segments
+    for i, segment in enumerate(snake.segments):
+        x = (segment.x + 400) * scale
+        y = (400 - segment.y) * scale  # Flip Y coordinate
+        
+        color = "lime" if i == 0 else "lightgreen"
+        size = 18 if i == 0 else 16
+        
+        html_content += f"""
+            <div style="position: absolute; left: {x-size//2}px; top: {y-size//2}px; 
+                        width: {size}px; height: {size}px; background-color: {color}; 
+                        border-radius: 50%; border: 1px solid darkgreen;"></div>
+        """
+    
+    # Add food
+    fx = (food.position.x + 400) * scale
+    fy = (400 - food.position.y) * scale
+    
+    html_content += f"""
+            <!-- Food -->
+            <div style="position: absolute; left: {fx-8}px; top: {fy-8}px; 
+                        width: 16px; height: 16px; background-color: red; 
+                        border-radius: 50%; border: 1px solid darkred;"></div>
+        </div>
+    </div>
+    """
+    
+    return html_content
 
 # Initialize session state
 def init_game():
@@ -212,7 +236,8 @@ def init_game():
     st.session_state.scoreboard = StreamlitScoreboard()
     st.session_state.game_running = True
     st.session_state.last_update = time.time()
-    st.session_state.speed = 0.2
+    st.session_state.speed = 0.3
+    st.session_state.display_mode = "HTML"
 
 if 'snake' not in st.session_state:
     init_game()
@@ -238,9 +263,9 @@ def check_collisions():
         st.session_state.game_running = False
         return "wall"
     
-    # Check self collision (distance < 15 from original)
+    # Check self collision
     for segment in snake.segments[1:]:  # Skip head
-        if snake.head.x == segment.x and snake.head.y == segment.y:
+        if abs(snake.head.x - segment.x) < 15 and abs(snake.head.y - segment.y) < 15:
             scoreboard.game_over()
             st.session_state.game_running = False
             return "self"
@@ -263,7 +288,13 @@ def main():
             st.metric("Total Games Played", total_games)
         
         st.header("🎛️ Game Controls")
-        game_speed = st.slider("Game Speed", 0.05, 0.5, st.session_state.speed, 0.05)
+        
+        # Display mode selection
+        display_mode = st.selectbox("Display Mode", ["HTML", "Text Grid"], 
+                                   index=0 if st.session_state.display_mode == "HTML" else 1)
+        st.session_state.display_mode = display_mode
+        
+        game_speed = st.slider("Game Speed (seconds)", 0.1, 0.8, st.session_state.speed, 0.1)
         st.session_state.speed = game_speed
         
         if st.button("🔄 New Game", type="primary"):
@@ -275,6 +306,7 @@ def main():
                 os.remove("high_score.json")
             st.session_state.scoreboard.high_score = 0
             st.success("High score reset!")
+            time.sleep(1)
             st.rerun()
         
         st.header("📖 Instructions")
@@ -288,7 +320,7 @@ def main():
         **Controls:**
         - ⬆️⬇️⬅️➡️ Move snake
         - Adjust speed with slider
-        - Reset game anytime
+        - Switch between HTML and Text display
         """)
     
     # Main game area
@@ -296,25 +328,27 @@ def main():
     
     with col2:
         # Control buttons
+        st.markdown("### 🎮 Game Controls")
         control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns(5)
         
         with control_col2:
-            if st.button("⬆️", key="up", help="Move Up"):
+            if st.button("⬆️", key="up", help="Move Up", use_container_width=True):
                 st.session_state.snake.up()
         
         with control_col1:
-            if st.button("⬅️", key="left", help="Move Left"):
+            if st.button("⬅️", key="left", help="Move Left", use_container_width=True):
                 st.session_state.snake.left()
         
         with control_col3:
-            if st.button("⬇️", key="down", help="Move Down"):
+            if st.button("⬇️", key="down", help="Move Down", use_container_width=True):
                 st.session_state.snake.down()
         
         with control_col4:
-            if st.button("➡️", key="right", help="Move Right"):
+            if st.button("➡️", key="right", help="Move Right", use_container_width=True):
                 st.session_state.snake.right()
         
         # Game display
+        st.markdown("### 🎯 Game Area")
         game_container = st.container()
         
         with game_container:
@@ -329,21 +363,31 @@ def main():
                     if collision == "food":
                         st.balloons()
             
-            # Create and display game
-            fig = create_game_plot(
-                st.session_state.snake, 
-                st.session_state.food,
-                st.session_state.scoreboard.score,
-                st.session_state.scoreboard.high_score,
-                st.session_state.scoreboard.game_over_flag
-            )
-            st.pyplot(fig, clear_figure=True)
+            # Create and display game based on selected mode
+            if st.session_state.display_mode == "HTML":
+                html_display = create_html_game_display(
+                    st.session_state.snake, 
+                    st.session_state.food,
+                    st.session_state.scoreboard.score,
+                    st.session_state.scoreboard.high_score,
+                    st.session_state.scoreboard.game_over_flag
+                )
+                st.markdown(html_display, unsafe_allow_html=True)
+            else:
+                text_display = create_game_display(
+                    st.session_state.snake, 
+                    st.session_state.food,
+                    st.session_state.scoreboard.score,
+                    st.session_state.scoreboard.high_score,
+                    st.session_state.scoreboard.game_over_flag
+                )
+                st.code(text_display, language=None)
             
             # Game status
             if st.session_state.game_running:
                 st.success("🎮 Game Running - Use arrow buttons to control!")
                 # Auto-refresh for continuous gameplay
-                time.sleep(0.05)
+                time.sleep(0.1)
                 st.rerun()
             else:
                 st.error("💀 Game Over!")
@@ -355,7 +399,7 @@ def main():
                 with col_stats2:
                     st.metric("High Score", st.session_state.scoreboard.high_score)
                 with col_stats3:
-                    if st.session_state.scoreboard.score == st.session_state.scoreboard.high_score:
+                    if st.session_state.scoreboard.score == st.session_state.scoreboard.high_score and st.session_state.scoreboard.score > 0:
                         st.success("🏆 NEW HIGH SCORE!")
                     else:
                         st.info("Try again!")
@@ -364,9 +408,18 @@ def main():
                     init_game()
                     st.rerun()
 
-    # Keyboard controls instructions
+    # Game info
     st.markdown("---")
-    st.info("💡 **Tip:** For better gameplay experience, click on the arrow buttons to control the snake. The game auto-refreshes to provide smooth movement!")
+    
+    # Display current game state
+    with st.expander("🔍 Game Debug Info"):
+        st.write(f"Snake Head Position: ({st.session_state.snake.head.x}, {st.session_state.snake.head.y})")
+        st.write(f"Snake Direction: {st.session_state.snake.direction}")
+        st.write(f"Food Position: ({st.session_state.food.position.x}, {st.session_state.food.position.y})")
+        st.write(f"Snake Length: {len(st.session_state.snake.segments)}")
+        st.write(f"Game Running: {st.session_state.game_running}")
+    
+    st.info("💡 **Tip:** Use the arrow buttons to control your snake. Choose between HTML or Text Grid display mode in the sidebar!")
 
 if __name__ == "__main__":
     main()
