@@ -1,58 +1,42 @@
-🐍 Snake Game - Streamlit Web App
-A modern, web-based implementation of the classic Snake game built with Streamlit and Python. This project transforms a traditional turtle-graphics Snake game into an interactive web application with enhanced features including persistent high score tracking.
-Show Image
-Show Image
-Show Image
-🎮 Features
-Core Gameplay
+This repository contains various Python projects and implementations, along with a live Snake Game built with HTML5 Canvas and JavaScript.
+🐍 Snake Game Features
+Game Features:
 
-Classic Snake mechanics - Move, eat, grow, and avoid collisions
-Smooth controls - Responsive arrow button controls
-Real-time updates - Live game state with automatic refresh
-Visual feedback - Modern matplotlib-based graphics with animations
+✅ Classic Snake gameplay
+✅ Score tracking with persistent high scores
+✅ Smooth animations and modern UI
+✅ Mobile-responsive design
+✅ Touch controls for mobile devices
+✅ Game over screen with restart option
+✅ Local storage for high score persistence
 
-Enhanced Features
+Technical Features:
 
-🏆 Persistent High Score Tracking - Scores saved between sessions
-📊 Game Statistics - Track total games played and performance
-⚡ Adjustable Speed - Customize game speed from beginner to expert
-🎨 Modern UI - Clean, intuitive Streamlit interface
-📱 Mobile Friendly - Responsive design works on all devices
-🎉 Celebrations - Balloons and notifications for achievements
+🎨 Modern glassmorphism UI design
+📱 Responsive layout (works on all devices)
+🎮 Keyboard controls (Arrow keys + Space)
+👆 Touch controls for mobile
+💾 High score saved in browser storage
+⚡ Optimized Canvas rendering
 
-Technical Features
+Controls:
 
-Session State Management - Maintains game state across interactions
-JSON Data Persistence - High scores saved locally
-Error Handling - Robust collision detection and game state management
-Performance Optimized - Efficient rendering and state updates
+↑ ↓ ← → Arrow Keys: Move the snake
+SPACE: Restart game
+Mobile: Use on-screen touch buttons
 
-🚀 Quick Start
-Prerequisites
+🚀 How to Play
 
-Python 3.7 or higher
-pip package manager
+Visit the live demo link above
+Use arrow keys to control the snake
+Eat the red food to grow and increase score
+Avoid hitting walls or the snake's own body
+Try to beat your high score!
 
-🎯 How to Play
-Basic Controls
+🛠️ Technologies Used
+Snake Game:
 
-Start the game - The snake begins moving automatically
-Control direction - Use the arrow buttons (⬆️⬇️⬅️➡️) to change direction
-Eat food - Guide the snake to the red food circles
-Avoid collisions - Don't hit walls or your own tail
-Beat your high score - Try to achieve the highest score possible!
-
-Game Mechanics
-
-Scoring: Each food item eaten increases your score by 1 point
-Growth: The snake grows longer with each food item consumed
-Speed: Adjust game speed using the sidebar slider
-Boundaries: The snake dies if it hits the game boundaries
-Self-collision: The snake dies if it runs into its own body
-
-Advanced Features
-
-High Score System: Your best score is automatically saved and displayed
-Game Statistics: View total games played in the sidebar
-Speed Control: Adjust from 0.05s (fast) to 0.5s (slow) per move
-Reset Options: Start new games or reset high scores anytime
+HTML5 Canvas - Game rendering
+Vanilla JavaScript - Game logic
+CSS3 - Modern UI styling
+Local Storage API - High score persistence
