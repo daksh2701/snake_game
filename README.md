@@ -1,5 +1,6 @@
 This repository contains various Python projects and implementations, along with a live Snake Game built with HTML5 Canvas and JavaScript.
 🐍 Snake Game Features
+Game Link : https://daksh2701.github.io/snake_game/
 Game Features:
 
 ✅ Classic Snake gameplay
