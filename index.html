@@ -135,44 +135,50 @@
             transform: scale(1.05);
         }
 
+        /* The following line from your original code was a syntax error and has been removed */
+        /* -btn:nth-child(2) { grid-column: 2; grid-row: 1; } */
+
         .mobile-controls {
             display: none;
-            margin-top: 20px;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
+            flex-direction: column;
+            align-items: center;
             gap: 10px;
-            width: 150px;
-            height: 150px;
         }
 
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
         .mobile-btn {
             background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 15px;
             color: white;
-            font-size: 1.5em;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; /* Makes buttons circular */
             cursor: pointer;
+            transition: transform 0.2s ease;
+            
+            /* The key changes to make buttons bigger and uniform */
+            width: 70px;
+            height: 70px;
+            font-size: 2.5em; 
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            font-weight: bold;
         }
 
-        .mobile-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: scale(1.1);
+        .mobile-btn:active {
+            transform: scale(0.9);
         }
-
-        .mobile-btn:nth-child(2) { grid-column: 2; grid-row: 1; }
-        .mobile-btn:nth-child(3) { grid-column: 1; grid-row: 2; }
-        .mobile-btn:nth-child(4) { grid-column: 3; grid-row: 2; }
-        .mobile-btn:nth-child(5) { grid-column: 2; grid-row: 3; }
 
         @media (max-width: 768px) {
             .header h1 { font-size: 2em; }
             .game-container { padding: 20px; margin: 10px; }
             canvas { max-width: 100%; }
-            .mobile-controls { display: grid; }
+            .controls { display: none; } /* Hide keyboard controls on small screens */
+            .mobile-controls { display: flex; } /* Show mobile controls on small screens */
         }
 
         .footer {
@@ -206,10 +212,14 @@
         </div>
 
         <div class="mobile-controls">
-            <button class="mobile-btn" data-direction="up">↑</button>
-            <button class="mobile-btn" data-direction="left">←</button>
-            <button class="mobile-btn" data-direction="right">→</button>
-            <button class="mobile-btn" data-direction="down">↓</button>
+            <div class="control-row">
+                <button class="mobile-btn" data-direction="up">↑</button>
+            </div>
+            <div class="control-row">
+                <button class="mobile-btn" data-direction="left">←</button>
+                <button class="mobile-btn" data-direction="down">↓</button>
+                <button class="mobile-btn" data-direction="right">→</button>
+            </div>
         </div>
     </div>
 
@@ -262,7 +272,7 @@
                 advanceSnake();
                 drawSnake();
                 main();
-            }, 150);
+            }, 165);
         }
 
         function clearCanvas() {
